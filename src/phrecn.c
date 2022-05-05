@@ -24,8 +24,9 @@
 #include <config.h>
 #endif
 
-#if defined(__FRAMAC__) || defined(MAIN_photorec)
+#if defined(DISABLED_FOR_FRAMAC)
 #undef HAVE_NCURSES
+#undef ENABLE_DFXML
 #endif
 
 #include <stdio.h>
@@ -88,7 +89,6 @@
 /* #define DEBUG_BF */
 #define DEFAULT_IMAGE_NAME "image_remaining.dd"
 
-extern file_check_list_t file_check_list;
 extern int need_to_stop;
 
 static int interface_cannot_create_file(void);
@@ -140,21 +140,6 @@ static void recovery_finished(disk_t *disk, const partition_t *partition, const 
   {
     switch(wgetch(stdscr))
     {
-#if defined(KEY_MOUSE) && defined(ENABLE_MOUSE)
-      case KEY_MOUSE:
-	{
-	  MEVENT event;
-	  if(getmouse(&event) == OK)
-	  {	/* When the user clicks left mouse button */
-	    if((event.bstate & BUTTON1_CLICKED) || (event.bstate & BUTTON1_DOUBLE_CLICKED))
-	    {
-	      if(event.x < sizeof("[ Quit ]") && event.y==22)
-		return ;
-	    }
-	  }
-	}
-	break;
-#endif
       case KEY_ENTER:
 #ifdef PADENTER
       case PADENTER:
@@ -194,12 +179,18 @@ static int interface_cannot_create_file(void)
   return 1;
 }
 #else
+/*@ assigns \nothing; */
 static int interface_cannot_create_file(void)
 {
   return 1;
 }
 #endif
 
+#ifdef HAVE_NCURSES
+/*@
+  @ requires valid_read_string(filename);
+  @ requires \valid_read(list_search_space);
+  @*/
 static void gen_image(const char *filename, disk_t *disk, const alloc_data_t *list_search_space)
 {
   struct td_list_head *search_walker = NULL;
@@ -233,15 +224,20 @@ static void gen_image(const char *filename, disk_t *disk, const alloc_data_t *li
   free(buffer);
   fclose(out);
 }
+#endif
 
 int photorec(struct ph_param *params, const struct ph_options *options, alloc_data_t *list_search_space)
 {
   pstatus_t ind_stop=PSTATUS_OK;
   const unsigned int blocksize_is_known=params->blocksize;
+  /*@ assert valid_read_string(params->recup_dir); */
   params_reset(params, options);
+  /*@ assert valid_read_string(params->recup_dir); */
   if(params->cmd_run!=NULL && params->cmd_run[0]!='\0')
   {
     skip_comma_in_command(&params->cmd_run);
+    /*@ assert valid_read_string(params->recup_dir); */
+#ifndef DISABLED_FOR_FRAMAC
     if(check_command(&params->cmd_run,"status=unformat",15)==0)
     {
       params->status=STATUS_UNFORMAT;
@@ -274,6 +270,7 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
     {
       params->status=STATUS_EXT2_OFF;
     }
+#endif
   }
   else
   {
@@ -283,11 +280,13 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
       params->status=STATUS_UNFORMAT;
 #endif
   }
-
+  /*@ assert valid_read_string(params->recup_dir); */
   screen_buffer_reset();
+#ifndef DISABLED_FOR_FRAMAC
   log_info("\nAnalyse\n");
   log_partition(params->disk, params->partition);
-
+#endif
+  /*@ assert valid_read_string(params->recup_dir); */
   /* make the first recup_dir */
   params->dir_num=photorec_mkdir(params->recup_dir, params->dir_num);
 
@@ -297,11 +296,16 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
   xml_setup(params->disk, params->partition);
 #endif
   
+  /*@
+    @ loop invariant valid_ph_param(params);
+    @*/
   for(params->pass=0; params->status!=STATUS_QUIT; params->pass++)
   {
     const unsigned int old_file_nbr=params->file_nbr;
+#ifndef DISABLED_FOR_FRAMAC
     log_info("Pass %u (blocksize=%u) ", params->pass, params->blocksize);
     log_info("%s\n", status_to_name(params->status));
+#endif
 
 #ifdef HAVE_NCURSES
     aff_copy(stdscr);
@@ -319,12 +323,13 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
     switch(params->status)
     {
       case STATUS_UNFORMAT:
-#ifndef __FRAMAC__
+#ifndef DISABLED_FOR_FRAMAC
 	ind_stop=fat_unformat(params, options, list_search_space);
 #endif
 	params->blocksize=blocksize_is_known;
 	break;
       case STATUS_FIND_OFFSET:
+#ifndef DISABLED_FOR_FRAMAC
 	{
 	  uint64_t start_offset=0;
 	  if(blocksize_is_known>0)
@@ -344,10 +349,13 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
 #endif
 	  update_blocksize(params->blocksize, list_search_space, start_offset);
 	}
+#else
+	params->blocksize=512;
+#endif
 	break;
       case STATUS_EXT2_ON_BF:
       case STATUS_EXT2_OFF_BF:
-#ifndef __FRAMAC__
+#ifndef DISABLED_FOR_FRAMAC
 	ind_stop=photorec_bf(params, options, list_search_space);
 #endif
 	break;
@@ -417,6 +425,7 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
 	  unlink("photorec.ses");
 	break;
     }
+#ifndef DISABLED_FOR_FRAMAC
     {
       const time_t current_time=time(NULL);
       log_info("Elapsed time %uh%02um%02us\n",
@@ -431,6 +440,7 @@ int photorec(struct ph_param *params, const struct ph_options *options, alloc_da
       write_stats_log(params->file_stats);
     }
     log_flush();
+#endif
   }
 #ifdef HAVE_NCURSES
   if(options->expert>0 && !td_list_empty(&list_search_space->list))
@@ -575,9 +585,6 @@ void interface_file_select_ncurses(file_enable_t *files_enable)
     {0,NULL,NULL}
   };
   log_info("\nInterface File Select\n");
-#if defined(KEY_MOUSE) && defined(ENABLE_MOUSE)
-  mousemask(ALL_MOUSE_EVENTS, NULL);
-#endif
   while(1)
   {
     int i;
@@ -641,42 +648,6 @@ void interface_file_select_ncurses(file_enable_t *files_enable)
     wprintw(stdscr," to save the settings");
     command = wmenuSelect(stdscr, LINES-1, INTER_FSELECT_Y, INTER_FSELECT_X, menuAdv, 8,
 	"q", MENU_BUTTON | MENU_ACCEPT_OTHERS, menu);
-#if defined(KEY_MOUSE) && defined(ENABLE_MOUSE)
-    if(command == KEY_MOUSE)
-    {
-      MEVENT event;
-      if(getmouse(&event) == OK)
-      {	/* When the user clicks left mouse button */
-	if((event.bstate & BUTTON1_CLICKED) || (event.bstate & BUTTON1_DOUBLE_CLICKED))
-	{
-	  if(event.y >=6 && event.y<6+INTER_FSELECT)
-	  {
-	    if(((event.bstate & BUTTON1_CLICKED) && current_element_num == event.y-6-offset) ||
-	      (event.bstate & BUTTON1_DOUBLE_CLICKED))
-	      command='+';
-	    /* Disk selection */
-	    while(current_element_num > event.y-(6-offset) && current_element_num>0)
-	    {
-		current_element_num--;
-	    }
-	    while(current_element_num < event.y-(6-offset) && files_enable[current_element_num+1].file_hint!=NULL)
-	    {
-		current_element_num++;
-	    }
-	  }
-	  else if(event.y==5 && event.x>=4 && event.x<=4+sizeof("Previous") &&
-	      offset>0)
-	    command=KEY_PPAGE;
-	  else if(event.y==6+INTER_FSELECT && event.x>=4 && event.x<=4+sizeof("Next") &&
-	      files_enable[i].file_hint!=NULL)
-	    command=KEY_NPAGE;
-	  else
-	    command = menu_to_command(LINES-1, INTER_FSELECT_Y, INTER_FSELECT_X, menuAdv, 8,
-		"q", MENU_BUTTON | MENU_ACCEPT_OTHERS, event.y, event.x);
-	}
-      }
-    }
-#endif
     switch(command)
     {
       case KEY_UP:

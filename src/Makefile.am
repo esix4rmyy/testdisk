@@ -158,6 +158,7 @@ file_C			= filegen.c \
 			  file_fat.c \
 			  file_fbf.c \
 			  file_fbk.c \
+			  file_fbx.c \
 			  file_fcp.c \
 			  file_fcs.c \
 			  file_fdb.c \
@@ -192,6 +193,7 @@ file_C			= filegen.c \
 			  file_gsm.c \
 			  file_gz.c \
 			  file_hdf.c \
+			  file_hdf5.c \
 			  file_hdr.c \
 			  file_hds.c \
 			  file_hfsp.c \
@@ -223,6 +225,7 @@ file_C			= filegen.c \
 			  file_lso.c \
 			  file_luks.c \
 			  file_lxo.c \
+			  file_lz.c \
 			  file_lzh.c \
 			  file_lzo.c \
 			  file_m2ts.c \
@@ -407,6 +410,7 @@ QT_TS = \
   lang/qphotorec.cs.ts \
   lang/qphotorec.el.ts \
   lang/qphotorec.es.ts \
+  lang/qphotorec.fi.ts \
   lang/qphotorec.fr.ts \
   lang/qphotorec.it.ts \
   lang/qphotorec.ja.ts \
@@ -484,20 +488,20 @@ session_%.framac: file_%.c common.c filegen.c log.c
 	frama-c $^ -cpp-extra-args="-DMAIN_$* -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
 
 session_fidentify-%.framac: $(fidentify_C_SOURCES)
-	$(CC) $(CFLAGS) -DMAIN_fidentify -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -I.. $^ -o fidentify_$*
-	frama-c $^ -cpp-extra-args="-DMAIN_fidentify -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
+	$(CC) $(CFLAGS) -DDISABLED_FOR_FRAMAC -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -I.. $^ -o fidentify_$*
+	frama-c $^ -cpp-extra-args="-DDISABLED_FOR_FRAMAC -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
 
 session_fidentify.framac: $(fidentify_C_SOURCES)
-	$(CC) $(CFLAGS) -DMAIN_fidentify -DHAVE_CONFIG_H -I.. $^ -o demo_fidentify
-	frama-c $^ -cpp-extra-args="-DMAIN_fidentify -DHAVE_CONFIG_H -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
+	$(CC) $(CFLAGS) -DDISABLED_FOR_FRAMAC -DHAVE_CONFIG_H -I.. $^ -o demo_fidentify
+	frama-c $^ -cpp-extra-args="-DDISABLED_FOR_FRAMAC -DHAVE_CONFIG_H -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
 
 session_photorec-%.framac: $(photorec_C_SOURCES)
-	$(CC) $(CFLAGS) -DMAIN_photorec -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -DSINGLE_PARTITION_TYPE -I.. $^ -o photorec_$*
-	frama-c $^ -cpp-extra-args="-DMAIN_photorec -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -DSINGLE_PARTITION_TYPE -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
+	$(CC) $(CFLAGS) -DDISABLED_FOR_FRAMAC -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -DSINGLE_PARTITION_TYPE -I.. $^ -o photorec_$*
+	frama-c $^ -cpp-extra-args="-DDISABLED_FOR_FRAMAC -DHAVE_CONFIG_H -DSINGLE_FORMAT -DSINGLE_FORMAT_$* -DSINGLE_PARTITION_TYPE -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
 
 session_photorec.framac: $(photorec_C_SOURCES)
-	$(CC) $(CFLAGS) -DMAIN_photorec -DHAVE_CONFIG_H -I.. $^ -o demo_photorec
-	frama-c $^ -cpp-extra-args="-DMAIN_photorec -DHAVE_CONFIG_H -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
+	$(CC) $(CFLAGS) -DDISABLED_FOR_FRAMAC -DHAVE_CONFIG_H -I.. $^ -o demo_photorec
+	frama-c $^ -cpp-extra-args="-DDISABLED_FOR_FRAMAC -DHAVE_CONFIG_H -D__x86_64__ -I.." $(FRAMA_C_FLAGS) -save $@
 
 moc_qphotorec.cpp: qphotorec.h
 	$(AM_V_GEN) QT_SELECT=$(QT_SELECT) $(MOC) $< -o $@

@@ -28,7 +28,7 @@
 #undef SUDO_BIN
 #endif
 
-#if defined(__FRAMAC__) || defined(MAIN_photorec)
+#if defined(DISABLED_FOR_FRAMAC)
 #undef HAVE_NCURSES
 #endif
 
@@ -114,9 +114,6 @@ static int photorec_disk_selection_ncurses(struct ph_param *params, struct ph_op
     wprintw(stdscr,"comes with ABSOLUTELY NO WARRANTY.");
     wmove(stdscr,7,0);
     wprintw(stdscr,"Select a media (use Arrow keys, then press Enter):");
-#if defined(KEY_MOUSE) && defined(ENABLE_MOUSE)
-    mousemask(ALL_MOUSE_EVENTS, NULL);
-#endif
     for(i=0,element_disk=list_disk;
 	element_disk!=NULL && i<offset+NBR_DISK_MAX;
 	i++, element_disk=element_disk->next)
@@ -173,39 +170,6 @@ static int photorec_disk_selection_ncurses(struct ph_param *params, struct ph_op
     }
     command = wmenuSelect_ext(stdscr, INTER_NOTE_Y-1, INTER_DISK_Y, INTER_DISK_X, menuMain, 8,
 	menu_options, MENU_HORIZ | MENU_BUTTON | MENU_ACCEPT_OTHERS, &menu,&real_key);
-#if defined(KEY_MOUSE) && defined(ENABLE_MOUSE)
-    if(command == KEY_MOUSE)
-    {
-      MEVENT event;
-      if(getmouse(&event) == OK)
-      {	/* When the user clicks left mouse button */
-	if((event.bstate & BUTTON1_CLICKED) || (event.bstate & BUTTON1_DOUBLE_CLICKED))
-	{
-	  if(event.y >=8 && event.y<8+NBR_DISK_MAX)
-	  {
-	    const int pos_num_old=pos_num;
-	    /* Disk selection */
-	    while(pos_num > event.y-(8-offset) && current_disk->prev!=NULL)
-	    {
-	      current_disk=current_disk->prev;
-	      pos_num--;
-	    }
-	    while(pos_num < event.y-(8-offset) && current_disk->next!=NULL)
-	    {
-	      current_disk=current_disk->next;
-	      pos_num++;
-	    }
-	    if(((event.bstate & BUTTON1_CLICKED) && pos_num==pos_num_old) ||
-		(event.bstate & BUTTON1_DOUBLE_CLICKED))
-	      command='O';
-	  }
-	  else
-	    command = menu_to_command(INTER_NOTE_Y-1, INTER_DISK_Y, INTER_DISK_X, menuMain, 8,
-		menu_options, MENU_HORIZ | MENU_BUTTON | MENU_ACCEPT_OTHERS, event.y, event.x);
-	}
-      }
-    }
-#endif
     switch(command)
     {
       case KEY_UP:
@@ -273,7 +237,7 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
     .list = TD_LIST_HEAD_INIT(list_search_space.list)
   };
   const int resume_session=(params->cmd_device!=NULL && strcmp(params->cmd_device,"resume")==0);
-#ifndef __FRAMAC__
+#ifndef DISABLED_FOR_FRAMAC
   if(params->cmd_device==NULL || resume_session!=0)
   {
     char *saved_device=NULL;
@@ -314,7 +278,7 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
   {
     /*@ assert valid_read_string(params->cmd_run); */
     params->disk=photorec_disk_selection_cli(params->cmd_device, list_disk, &list_search_space);
-    /*@ assert valid_disk(params->disk); */
+    /*@ assert params->disk == \null || valid_disk(params->disk); */
 #if defined(HAVE_NCURSES)
     if(params->disk==NULL)
     {
@@ -336,6 +300,7 @@ int do_curses_photorec(struct ph_param *params, struct ph_options *options, cons
       /*@ assert params->cmd_run == \null || valid_read_string(params->cmd_run); */
       return 0;
     }
+    /*@ assert valid_disk(params->disk); */
     change_arch_type_cli(params->disk, options->verbose, &params->cmd_run);
     autoset_unit(params->disk);
     menu_photorec(params, options, &list_search_space);
